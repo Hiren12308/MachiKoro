@@ -6,7 +6,7 @@
     "test": "node tests/GameEngine.test.js",
     "dev:server": "node server/index.js",
     "dev:client": "cd client && npm run dev",
-    "build": "cd client && npm install && npm run build",
+    "build": "npm install --prefix client && npm run build --prefix client",
     "start": "node server/index.js"
   },
   "description": "Online Machi Koro with all expansions (2-5 players)",
