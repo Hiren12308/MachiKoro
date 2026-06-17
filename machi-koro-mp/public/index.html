@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Machi Koro</title>
+<style>
+  :root {
+    --blue:#2e6fa8;--green:#2a7a44;--red:#b83232;--purple:#6b3fa0;
+    --gold:#c8960a;--bg:#1a1a2e;--surface:#16213e;--card-bg:#0f3460;
+    --text:#e0e0e0;--dim:#9090a8;--border:#2a3a5a;--accent:#e94560;--coin:#f5c518;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .hidden{display:none!important}
+
+  /* ── SCREENS ── */
+  .screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:1.25rem}
+  h1{font-size:2.8rem;color:var(--coin);letter-spacing:2px;text-shadow:0 0 20px rgba(245,197,24,.4)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem;width:100%;max-width:440px;display:flex;flex-direction:column;gap:.9rem}
+  .card h2{color:var(--coin);font-size:1.15rem}
+  input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.55rem .8rem;color:var(--text);font-size:.95rem;width:100%}
+  input:focus{outline:none;border-color:var(--coin)}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:.65rem 1.3rem;font-size:.95rem;cursor:pointer;font-weight:600;transition:opacity .15s;white-space:nowrap}
+  .btn:hover{opacity:.85}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn-sec{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+  .btn-sec:hover{border-color:var(--coin);color:var(--coin);opacity:1}
+  .btn-sm{padding:.38rem .8rem;font-size:.8rem}
+  .sub{color:var(--dim);font-size:.85rem}
+  .err{color:#e05555;font-size:.85rem;min-height:1.2em}
+
+  /* ── LOBBY ── */
+  .player-row-lobby{display:flex;align-items:center;gap:.6rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem}
+  .pr-name{flex:1;font-size:.88rem;font-weight:600}
+  .pr-you{color:var(--coin);font-size:.72rem}
+  .ready-dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0}
+  .ready-dot.ready{background:#2ecc71}
+  .lobby-hint{color:var(--dim);font-size:.78rem;text-align:center}
+
+  /* ── GAME LAYOUT ── */
+  #game-screen{display:none;flex-direction:column;height:100vh;overflow:hidden}
+  #game-screen.active{display:flex}
+  #hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:.45rem 1rem;display:flex;align-items:center;gap:.75rem;flex-shrink:0;flex-wrap:wrap}
+  #hdr h2{color:var(--coin);font-size:1.1rem;letter-spacing:1px}
+  .phase-badge{background:var(--accent);color:#fff;border-radius:20px;padding:.18rem .65rem;font-size:.72rem;font-weight:700;letter-spacing:1px}
+  #turn-info{flex:1;font-size:.85rem;color:var(--dim)}
+  #body{display:grid;grid-template-columns:195px 1fr 248px;flex:1;overflow:hidden}
+
+  /* Players sidebar */
+  #players-col{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:.55rem;display:flex;flex-direction:column;gap:.38rem}
+  .pc{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:.55rem;cursor:pointer;transition:border-color .15s}
+  .pc:hover{border-color:var(--dim)}
+  .pc.my-turn{border-color:var(--coin);background:#1e1e3a}
+  .pc.you-card{border-color:var(--blue)}
+  .pc.viewing{border-color:#7ab3e0}
+  .pc-name{font-weight:600;font-size:.82rem;display:flex;align-items:center;gap:.3rem}
+  .pc-coins{color:var(--coin);font-size:.9rem;font-weight:700;margin-top:.18rem}
+  .lm-bar{display:flex;gap:3px;margin-top:.3rem;flex-wrap:wrap}
+  .lm-pip{width:9px;height:9px;border-radius:2px;background:var(--border)}
+  .lm-pip.b{background:var(--coin)}
+  .you-tag{font-size:.62rem;color:var(--blue);background:rgba(46,111,168,.18);border-radius:3px;padding:0 4px}
+
+  /* Center board */
+  #board-col{overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.65rem}
+
+  /* Dice */
+  #dice-area{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:.65rem .9rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap}
+  .die{width:46px;height:46px;background:#fff;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.75rem;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .die.spin{animation:spin .4s ease}
+  @keyframes spin{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.2)}100%{transform:rotate(360deg) scale(1)}}
+  #dice-sum{font-size:1.35rem;font-weight:700;color:var(--coin)}
+  #dice-btns{display:flex;gap:.4rem;flex-wrap:wrap;margin-left:auto}
+
+  /* Market */
+  .mkt-section{display:flex;flex-direction:column;gap:.35rem}
+  .row-label{display:flex;align-items:center;gap:.45rem;font-size:.7rem;color:var(--dim);letter-spacing:1.2px;text-transform:uppercase}
+  .badge{padding:.14rem .5rem;border-radius:4px;font-weight:700;font-size:.66rem}
+  .b-high{background:rgba(107,63,160,.3);color:#b48ad8;border:1px solid #6b3fa055}
+  .b-low{background:rgba(46,111,168,.25);color:#7ab3e0;border:1px solid #2e6fa855}
+  .b-purple{background:rgba(107,63,160,.5);color:#d0a0ff;border:1px solid #9960cc}
+  .locked-notice{font-size:.7rem;color:#e05555;background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);border-radius:6px;padding:.28rem .6rem;display:inline-block;margin:.2rem 0}
+  .slots{display:flex;gap:.42rem;flex-wrap:wrap}
+  .slot{position:relative;width:106px}
+  .mkt-card{background:var(--card-bg);border:1px solid var(--border);border-radius:9px;padding:.48rem;cursor:pointer;transition:all .15s;width:100%;min-height:128px;display:flex;flex-direction:column}
+  .mkt-card:hover{border-color:#aaa;transform:translateY(-2px)}
+  .mkt-card.buyable{border-color:var(--green)}
+  .mkt-card.buyable:hover{box-shadow:0 0 9px rgba(42,122,68,.45)}
+  .mkt-card.dim-card{opacity:.55;cursor:default;pointer-events:none}
+  .mkt-card.locked-card{opacity:.38;cursor:default;pointer-events:none;filter:grayscale(60%)}
+  .ci{font-size:1.2rem}
+  .cn{font-size:.67rem;font-weight:600;line-height:1.2;margin-top:.18rem;flex:1}
+  .ca{font-size:.6rem;color:var(--dim);margin-top:.22rem}
+  .cc{font-size:.7rem;color:var(--coin);font-weight:700}
+  .cstripe{height:3px;border-radius:2px;margin-top:.28rem}
+  .s-PI{background:var(--blue)}.s-SI{background:var(--green)}.s-R{background:var(--red)}.s-ME{background:var(--purple)}
+  .htag{font-size:.57rem;color:#7ab3e0;background:rgba(46,111,168,.2);border-radius:3px;padding:1px 4px;margin-top:2px;display:inline-block}
+  .stack-badge{position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;border-radius:9px;font-size:.63rem;font-weight:700;padding:1px 5px;z-index:2}
+  .empty-slot{background:rgba(255,255,255,.025);border:1px dashed var(--border);border-radius:9px;width:106px;min-height:128px;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:.72rem}
+  .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#080818;border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem;min-width:152px;max-width:195px;z-index:99;pointer-events:none;font-size:.7rem;display:none;line-height:1.45}
+  .slot:hover .tip{display:block}
+
+  /* Right panel */
+  #right-col{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:.65rem;display:flex;flex-direction:column;gap:.6rem}
+  .rh{color:var(--dim);font-size:.68rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:.15rem}
+  .hc{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:.38rem .52rem;display:flex;align-items:center;gap:.4rem;font-size:.75rem}
+  .hci{font-size:.95rem}.hcn{flex:1;font-size:.7rem}.hca{color:var(--dim);font-size:.61rem}.hcq{color:var(--coin);font-weight:700}
+  .lmc{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:.38rem .52rem;font-size:.75rem;display:flex;align-items:center;gap:.42rem;cursor:pointer;transition:all .15s}
+  .lmc:hover{border-color:var(--dim)}.lmc.built{border-color:var(--gold);background:#1e1a0e}.lmc.can-buy{border-color:var(--green)}
+  .lmn{flex:1;font-size:.7rem;font-weight:600}.lmp{color:var(--coin);font-weight:700;font-size:.7rem}
+  #log-box{font-size:.7rem;display:flex;flex-direction:column;gap:.22rem;max-height:200px;overflow-y:auto}
+  .le{background:var(--bg);border-left:2px solid var(--border);padding:.26rem .42rem;border-radius:0 4px 4px 0;color:var(--dim);line-height:1.3}
+  .le.fresh{border-left-color:var(--accent);color:var(--text)}
+
+  /* Action bar */
+  #action-bar{background:var(--surface);border-top:1px solid var(--border);padding:.55rem .9rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-height:68px;flex-shrink:0}
+  #action-msg{flex:1;font-size:.85rem;color:var(--dim)}
+  #action-msg strong{color:var(--text)}
+  #action-btns{display:flex;gap:.42rem;flex-wrap:wrap}
+  .waiting-msg{color:var(--dim);font-size:.85rem;font-style:italic}
+
+  /* Modal */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;align-items:center;justify-content:center}
+  .overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.35rem;max-width:450px;width:90%;max-height:80vh;overflow-y:auto}
+  .modal h3{color:var(--coin);margin-bottom:.85rem}
+  .mlist{display:flex;flex-direction:column;gap:.38rem}
+  .mopt{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.52rem .68rem;cursor:pointer;transition:border-color .15s}
+  .mopt:hover{border-color:var(--coin)}
+  .mot{font-weight:600;font-size:.86rem}.mos{color:var(--dim);font-size:.75rem;margin-top:.12rem}
+
+  /* Win */
+  #win-screen{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:1.3rem}
+  #win-screen.open{display:flex}
+  #win-screen h1{font-size:2.6rem;color:var(--coin);text-align:center}
+
+  ::-webkit-scrollbar{width:5px}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ══ JOIN SCREEN ══════════════════════════════════════════════════════════ -->
+<div id="join-screen" class="screen">
+  <h1>🏙️ MACHI KORO</h1>
+  <div class="card">
+    <h2>Enter Your Name to Join</h2>
+    <input id="name-input" type="text" placeholder="Your name (e.g. Alice)" maxlength="20" autofocus>
+    <button class="btn" id="join-btn">Join Game</button>
+    <div class="err" id="join-err"></div>
+    <div class="sub">Make sure you're on the same WiFi as the host.</div>
+  </div>
+</div>
+
+<!-- ══ LOBBY SCREEN ═════════════════════════════════════════════════════════ -->
+<div id="lobby-screen" class="screen hidden">
+  <h1>🏙️ MACHI KORO</h1>
+  <div class="card">
+    <h2>Lobby</h2>
+    <div id="lobby-url" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;font-size:.82rem;color:var(--dim)"></div>
+    <div id="lobby-players" style="display:flex;flex-direction:column;gap:.38rem"></div>
+    <div class="lobby-hint" id="lobby-hint">Waiting for players... (need at least 2)</div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn" id="ready-btn" style="flex:1">Ready Up</button>
+      <button class="btn btn-sec" id="start-btn" style="flex:1">Start Now (host)</button>
+    </div>
+    <div class="err" id="lobby-err"></div>
+  </div>
+</div>
+
+<!-- ══ GAME SCREEN ══════════════════════════════════════════════════════════ -->
+<div id="game-screen">
+  <div id="hdr">
+    <h2>🏙️ MACHI KORO</h2>
+    <div id="turn-info"></div>
+    <span class="phase-badge" id="phase-label">…</span>
+    <button class="btn btn-sec btn-sm" onclick="document.getElementById('rules-overlay').classList.add('open')">Rules</button>
+  </div>
+
+  <div id="body">
+    <div id="players-col"></div>
+
+    <div id="board-col">
+      <div id="dice-area">
+        <div id="dice-disp" style="display:flex;gap:.6rem;align-items:center">
+          <span style="color:var(--dim);font-size:.83rem">Waiting for roll…</span>
+        </div>
+        <div id="dice-sum"></div>
+        <div id="dice-btns"></div>
+      </div>
+
+      <div class="mkt-section">
+        <div id="high-section">
+          <div class="row-label"><span class="badge b-high">HIGH ROLLS 7+</span><span style="font-size:.63rem">Blue &amp; Green · 5 slots · requires 🚉 Train Station</span></div>
+          <div id="high-locked"></div>
+          <div class="slots" id="market-high"></div>
+        </div>
+        <div class="row-label" style="margin-top:.45rem"><span class="badge b-low">LOW ROLLS 1–6</span><span style="font-size:.63rem">Blue &amp; Green · 5 slots</span></div>
+        <div class="slots" id="market-low"></div>
+        <div class="row-label" style="margin-top:.45rem"><span class="badge b-purple">MAJOR ESTABLISHMENTS</span><span style="font-size:.63rem">Purple · 4 slots</span></div>
+        <div class="slots" id="market-purple"></div>
+        <div id="deck-count" style="font-size:.7rem;color:var(--dim);margin-top:.3rem"></div>
+      </div>
+    </div>
+
+    <div id="right-col">
+      <div><div class="rh" id="hand-head">Your Hand</div><div id="hand-disp"></div></div>
+      <div><div class="rh">Landmarks</div><div id="lm-disp"></div></div>
+      <div><div class="rh">Game Log</div><div id="log-box"></div></div>
+    </div>
+  </div>
+
+  <div id="action-bar">
+    <div id="action-msg"></div>
+    <div id="action-btns"></div>
+  </div>
+</div>
+
+<!-- WIN -->
+<div id="win-screen">
+  <div style="font-size:4.5rem">🎉</div>
+  <h1 id="win-title"></h1>
+  <p style="color:var(--dim)">All landmarks built!</p>
+</div>
+
+<!-- ACTION MODAL (TV, BC, Renovation, Tech) -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Choose</h3>
+    <div class="mlist" id="modal-list"></div>
+    <button class="btn btn-sec" id="modal-cancel" style="margin-top:.85rem;width:100%">Cancel</button>
+  </div>
+</div>
+
+<!-- RULES MODAL -->
+<div class="overlay" id="rules-overlay">
+  <div class="modal" style="max-width:560px">
+    <h3>How to Play</h3>
+    <div style="font-size:.82rem;line-height:1.75;color:var(--dim);display:flex;flex-direction:column;gap:.6rem">
+      <p><strong style="color:var(--text)">Goal:</strong> First player to build all 8 landmarks wins.</p>
+      <p><strong style="color:var(--text)">Turn:</strong> Roll dice → Income → Buy 1 thing (mandatory if affordable) → End turn.</p>
+      <p><strong style="color:var(--text)">One purchase per turn</strong> — card or landmark, not both.</p>
+      <p><span style="color:#7ab3e0">■ Blue</span> — activates on anyone's roll, collect from bank.</p>
+      <p><span style="color:#5abf7a">■ Green</span> — activates on your roll only, collect from bank.</p>
+      <p><span style="color:#e05555">■ Red</span> — activates on active player's roll, they pay you.</p>
+      <p><span style="color:#b48ad8">■ Purple</span> — activates on your roll, unique effects. Max 1 per player.</p>
+      <p><strong style="color:var(--text)">High Roll Row (7+)</strong> unlocks once any player builds Train Station (allows 2 dice).</p>
+      <p><strong style="color:var(--text)">Stacked cards</strong> mean duplicates came up — the ×N badge shows how many copies are available.</p>
+      <p>Click a player in the left panel to view their hand &amp; landmarks.</p>
+    </div>
+    <button class="btn btn-sec" onclick="document.getElementById('rules-overlay').classList.remove('open')" style="margin-top:.9rem;width:100%">Close</button>
+  </div>
+</div>
+
+<script>
+// ══ CLIENT STATE ═════════════════════════════════════════════════════════════
+let ws = null;
+let myId = null;
+let G    = null;   // game state snapshot from server
+let viewingPlayer = null;
+let lobbyData = [];
+let isHost = false;
+
+const FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+
+// Card/landmark data (inlined at bottom of file by build step)
+// For now loaded via <script> tags pointing to /cards-data.js
+
+// ══ CONNECTION ════════════════════════════════════════════════════════════════
+function connect(name) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => {
+    send({ type: 'JOIN', name });
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMsg(msg);
+  };
+
+  ws.onerror = () => showErr('join-err', 'Could not connect to server.');
+  ws.onclose = () => {
+    if (G) showErr('', '');  // game was running
+  };
+}
+
+function send(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
+
+// ══ MESSAGE HANDLER ═══════════════════════════════════════════════════════════
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'JOINED':
+      myId = msg.yourId;
+      lobbyData = msg.lobby;
+      isHost = lobbyData[0]?.id === myId;
+      showScreen('lobby');
+      renderLobby();
+      break;
+
+    case 'LOBBY_UPDATE':
+      lobbyData = msg.lobby;
+      isHost = lobbyData[0]?.id === myId;
+      renderLobby();
+      break;
+
+    case 'GAME_STATE':
+      G = msg.state;
+      if (msg.yourId) myId = msg.yourId;
+      showScreen('game');
+      render();
+      break;
+
+    case 'PLAYER_LEFT':
+      appendLog(`⚠️ ${msg.name} disconnected`);
+      break;
+
+    case 'ERROR':
+      showErr('join-err', msg.text);
+      showErr('lobby-err', msg.text);
+      break;
+  }
+}
+
+// ══ SCREENS ═══════════════════════════════════════════════════════════════════
+function showScreen(name) {
+  document.getElementById('join-screen').classList.toggle('hidden', name !== 'join');
+  document.getElementById('lobby-screen').classList.toggle('hidden', name !== 'lobby');
+  document.getElementById('game-screen').classList.toggle('active', name === 'game');
+  if (name !== 'game') document.getElementById('game-screen').style.display = 'none';
+  else document.getElementById('game-screen').style.display = '';
+}
+
+function showErr(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+// ══ JOIN SCREEN ═══════════════════════════════════════════════════════════════
+document.getElementById('name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doJoin();
+});
+document.getElementById('join-btn').addEventListener('click', doJoin);
+
+function doJoin() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { showErr('join-err', 'Please enter your name.'); return; }
+  showErr('join-err', '');
+  document.getElementById('join-btn').disabled = true;
+  connect(name);
+}
+
+// ══ LOBBY ═════════════════════════════════════════════════════════════════════
+document.getElementById('ready-btn').addEventListener('click', () => send({ type: 'READY' }));
+document.getElementById('start-btn').addEventListener('click', () => send({ type: 'START' }));
+
+function renderLobby() {
+  // Show this machine's URL to share
+  document.getElementById('lobby-url').textContent = `Share with friends: ${location.href}`;
+
+  const myEntry = lobbyData.find(p => p.id === myId);
+  const btn = document.getElementById('ready-btn');
+  btn.textContent = myEntry?.ready ? '✓ Ready!' : 'Ready Up';
+  btn.style.background = myEntry?.ready ? '#2ecc71' : '';
+
+  document.getElementById('start-btn').style.display = isHost ? '' : 'none';
+
+  const el = document.getElementById('lobby-players');
+  el.innerHTML = '';
+  for (const p of lobbyData) {
+    const row = document.createElement('div');
+    row.className = 'player-row-lobby';
+    row.innerHTML = `
+      <div class="ready-dot ${p.ready ? 'ready' : ''}"></div>
+      <span class="pr-name">${esc(p.name)}</span>
+      ${p.id === myId ? '<span class="pr-you">YOU</span>' : ''}
+      ${lobbyData[0]?.id === p.id ? '<span class="pr-you" style="color:var(--accent)">HOST</span>' : ''}
+      <span style="font-size:.75rem;color:${p.ready ? '#2ecc71' : 'var(--dim)'}">${p.ready ? 'Ready' : 'Not ready'}</span>
+    `;
+    el.appendChild(row);
+  }
+
+  const hint = document.getElementById('lobby-hint');
+  const allReady = lobbyData.length >= 2 && lobbyData.every(p => p.ready);
+  if (allReady) hint.textContent = 'All ready! Starting…';
+  else if (lobbyData.length < 2) hint.textContent = 'Waiting for more players… (need at least 2)';
+  else hint.textContent = `${lobbyData.filter(p=>p.ready).length}/${lobbyData.length} ready`;
+}
+
+// ══ GAME RENDER ═══════════════════════════════════════════════════════════════
+function render() {
+  if (!G) return;
+  renderHeader();
+  renderPlayers();
+  renderDice();
+  renderMarket();
+  renderRightPanel();
+  renderActionBar();
+  if (G.winner) showWin();
+}
+
+function myGamePlayer() {
+  return G.players.find(p => p.id === myId);
+}
+
+function isMyTurn() {
+  return G.players[G.currentPlayerIndex]?.id === myId;
+}
+
+function renderHeader() {
+  const cp = G.players[G.currentPlayerIndex];
+  const mine = isMyTurn();
+  document.getElementById('turn-info').innerHTML = mine
+    ? `<strong style="color:var(--coin)">Your turn!</strong>`
+    : `${esc(cp?.name)}'s turn`;
+  const labels = { ROLL:'ROLL DICE', HARBOR_BONUS:'HARBOR?', INCOME:'INCOME', BUY:'BUY PHASE',
+    TV_TARGET:'TV STATION', BC_GIVE:'BUSINESS CENTER', BC_TAKE:'BUSINESS CENTER',
+    RENOVATION_TARGET:'RENOVATION', GAME_OVER:'GAME OVER' };
+  document.getElementById('phase-label').textContent = labels[G.phase] || G.phase;
+}
+
+function renderPlayers() {
+  const col = document.getElementById('players-col');
+  col.innerHTML = '';
+  for (const p of G.players) {
+    const isActive = p.id === G.players[G.currentPlayerIndex]?.id;
+    const isMe = p.id === myId;
+    const isViewing = viewingPlayer === p.id;
+    const div = document.createElement('div');
+    div.className = 'pc' + (isActive ? ' my-turn' : '') + (isMe ? ' you-card' : '') + (isViewing ? ' viewing' : '');
+    div.innerHTML = `
+      <div class="pc-name">${isActive ? '▶ ' : ''}<span>${esc(p.name)}</span>${isMe ? '<span class="you-tag">YOU</span>' : ''}</div>
+      <div class="pc-coins">🪙 ${p.coins}</div>
+      <div class="lm-bar">${ALL_LANDMARK_IDS.map(id => `<div class="lm-pip ${p.landmarks?.[id] ? 'b' : ''}" title="${LANDMARKS[id]?.name||''}"></div>`).join('')}</div>
+    `;
+    div.addEventListener('click', () => { viewingPlayer = (viewingPlayer === p.id) ? null : p.id; render(); });
+    col.appendChild(div);
+  }
+}
+
+function renderDice() {
+  const disp = document.getElementById('dice-disp');
+  const sumEl = document.getElementById('dice-sum');
+  const btns = document.getElementById('dice-btns');
+  btns.innerHTML = '';
+
+  if (!G.diceValues?.length) {
+    disp.innerHTML = '<span style="color:var(--dim);font-size:.83rem">Waiting for roll…</span>';
+    sumEl.textContent = '';
+  } else {
+    disp.innerHTML = G.diceValues.map(v => `<div class="die">${FACES[v]}</div>`).join('');
+    sumEl.textContent = `= ${G.diceSum}`;
+  }
+
+  const cp = G.players[G.currentPlayerIndex];
+  if (isMyTurn() && G.phase === 'BUY' && !G.hasRerolledThisTurn && cp?.landmarks?.['RADIO_TOWER']) {
+    btns.appendChild(mkBtn('🔄 Reroll', 'sec', () => send({ type: 'REROLL' })));
+  }
+}
+
+function renderMarket() {
+  const cp = G.players[G.currentPlayerIndex];
+  const isBuy = G.phase === 'BUY' && isMyTurn();
+  const bought = G.didBuyThisTurn;
+  const anyHasTrain = !!myGamePlayer()?.landmarks?.['TRAIN_STATION'];
+
+  document.getElementById('deck-count').textContent =
+    `📦 Deck: ${G.deckCount} card${G.deckCount !== 1 ? 's' : ''} remaining`;
+
+  const lockNotice = document.getElementById('high-locked');
+  const highSlots  = document.getElementById('market-high');
+  if (anyHasTrain) {
+    lockNotice.innerHTML = '';
+    renderSlots('market-high', G.marketHigh, 'high', isBuy, bought);
+  } else {
+    lockNotice.innerHTML = `<div class="locked-notice">🔒 Locked — YOU must build 🚉 Train Station to roll 2 dice and buy these cards</div>`;
+    renderSlots('market-high', G.marketHigh, 'high', false, true);
+  }
+
+  renderSlots('market-low',    G.marketLow,    'low',    isBuy, bought);
+  renderSlots('market-purple', G.marketPurple, 'purple', isBuy, bought);
+}
+
+function renderSlots(containerId, slots, slotType, isBuy, alreadyBought) {
+  const max = slotType === 'purple' ? 4 : 5;
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = '';
+  const myPlayer = myGamePlayer();
+
+  for (let i = 0; i < max; i++) {
+    const slot = slots?.[i];
+    if (!slot) {
+      const e = document.createElement('div'); e.className = 'empty-slot'; e.textContent = 'Empty';
+      cont.appendChild(e); continue;
+    }
+    const { id: cardId, count: stackCount } = slot;
+    const card = CARDS[cardId];
+    if (!card) continue;
+    const owned = myPlayer?.hand?.[cardId] || 0;
+    const maxed = card.maxPerPlayer === 1 && owned >= 1;
+    const canAfford = (myPlayer?.coins || 0) >= card.cost;
+    const buyable = isBuy && !alreadyBought && canAfford && !maxed;
+
+    const wrap = document.createElement('div'); wrap.className = 'slot';
+    let cls = 'mkt-card';
+    if (alreadyBought || !isMyTurn()) cls += ' dim-card';
+    else if (maxed || !canAfford) cls += ' dim-card';
+    else if (buyable) cls += ' buyable';
+
+    const stripeClass = { PRIMARY_INDUSTRY:'s-PI', SECONDARY_INDUSTRY:'s-SI', RESTAURANT:'s-R', MAJOR_ESTABLISHMENT:'s-ME' }[card.type] || '';
+    const actStr = card.activation.join(', ');
+    const harborTag = card.requiresLandmark ? `<div class="htag">⚓ Harbor</div>` : '';
+    const stackBadge = stackCount > 1 ? `<div class="stack-badge">×${stackCount}</div>` : '';
+
+    wrap.innerHTML = `
+      <div class="${cls}">
+        ${stackBadge}
+        <div class="ci">${card.icon}</div>
+        <div class="cn">${esc(card.name)}</div>
+        ${harborTag}
+        <div style="flex:1"></div>
+        <div class="ca">[${actStr}]</div>
+        <div class="cc">🪙 ${card.cost}</div>
+        <div class="cstripe ${stripeClass}"></div>
+      </div>
+      <div class="tip">
+        <strong>${card.icon} ${esc(card.name)}</strong><br>
+        ${esc(card.description)}<br>
+        <span style="color:var(--dim)">Activates: ${actStr}</span><br>
+        <span style="color:var(--dim)">In stack: ${stackCount}</span>
+        ${owned > 0 ? `<br><span style="color:var(--coin)">You own: ${owned}</span>` : ''}
+        ${maxed ? '<br><span style="color:#e05555">Already owned (max 1)</span>' : ''}
+      </div>
+    `;
+
+    if (buyable) {
+      wrap.querySelector('.mkt-card').addEventListener('click', () => {
+        send({ type: 'BUY_CARD', cardId, slotType });
+      });
+    }
+    cont.appendChild(wrap);
+  }
+}
+
+function renderRightPanel() {
+  const pid = viewingPlayer !== null ? viewingPlayer : myId;
+  const p = G.players.find(pl => pl.id === pid) || G.players[G.currentPlayerIndex];
+  const isSelf = p?.id === myId;
+  const isBuy = G.phase === 'BUY' && isMyTurn() && isSelf;
+
+  document.getElementById('hand-head').textContent = isSelf ? 'Your Hand' : `${p?.name}'s Hand`;
+
+  const hd = document.getElementById('hand-disp');
+  hd.innerHTML = '';
+  const entries = Object.entries(p?.hand || {})
+    .filter(([id, q]) => CARDS[id] && q > 0)
+    .sort(([a],[b]) => Math.min(...CARDS[a].activation) - Math.min(...CARDS[b].activation));
+  if (!entries.length) hd.innerHTML = '<div style="color:var(--dim);font-size:.75rem">No cards</div>';
+  for (const [id, qty] of entries) {
+    const card = CARDS[id];
+    const el = document.createElement('div'); el.className = 'hc';
+    el.innerHTML = `<span class="hci">${card.icon}</span><span class="hcn">${esc(card.name)}</span><span class="hca">[${card.activation.join(',')}]</span><span class="hcq">×${qty}</span>`;
+    hd.appendChild(el);
+  }
+
+  const ld = document.getElementById('lm-disp');
+  ld.innerHTML = '';
+  for (const lmId of ALL_LANDMARK_IDS) {
+    const lm = LANDMARKS[lmId]; if (!lm) continue;
+    const built = p?.landmarks?.[lmId];
+    const myCoins = myGamePlayer()?.coins || 0;
+    const canBuy = isBuy && !built && myCoins >= lm.cost && !G.didBuyThisTurn;
+    const el = document.createElement('div');
+    el.className = 'lmc' + (built ? ' built' : '') + (canBuy ? ' can-buy' : '');
+    el.title = lm.description;
+    el.innerHTML = `<span>${built?'✅':'⬜'}</span><span class="lmn">${esc(lm.name)}</span><span class="lmp">${built ? '—' : '🪙'+lm.cost}</span>`;
+    if (canBuy) el.addEventListener('click', () => send({ type: 'BUY_LANDMARK', landmarkId: lmId }));
+    ld.appendChild(el);
+  }
+
+  const lb = document.getElementById('log-box');
+  lb.innerHTML = (G.log || []).map((msg,i) => `<div class="le ${i===0?'fresh':''}">${esc(msg)}</div>`).join('');
+}
+
+function renderActionBar() {
+  const msg = document.getElementById('action-msg');
+  const btns = document.getElementById('action-btns');
+  btns.innerHTML = '';
+  const cp = G.players[G.currentPlayerIndex];
+  const mine = isMyTurn();
+  const myCoins = myGamePlayer()?.coins || 0;
+
+  if (!mine) {
+    msg.innerHTML = `<span class="waiting-msg">⏳ Waiting for <strong>${esc(cp?.name)}</strong>…</span>`;
+    return;
+  }
+
+  if (G.phase === 'ROLL') {
+    const hasTrain = cp?.landmarks?.['TRAIN_STATION'];
+    msg.innerHTML = `<strong>Your turn!</strong> Roll the dice.`;
+    if (hasTrain) {
+      btns.appendChild(mkBtn('🎲 Roll 1 Die', '', () => send({ type:'ROLL', numDice:1 })));
+      btns.appendChild(mkBtn('🎲🎲 Roll 2 Dice', '', () => send({ type:'ROLL', numDice:2 })));
+    } else {
+      btns.appendChild(mkBtn('🎲 Roll', '', () => send({ type:'ROLL', numDice:1 })));
+    }
+
+  } else if (G.phase === 'HARBOR_BONUS') {
+    msg.innerHTML = `<strong>Harbor bonus!</strong> Add +2 to your roll of ${G.diceSum}?`;
+    btns.appendChild(mkBtn(`⚓ Use Harbor (+2 → ${G.diceSum+2})`, '', () => send({ type:'HARBOR_BONUS', use:true })));
+    btns.appendChild(mkBtn(`Keep ${G.diceSum}`, 'sec', () => send({ type:'HARBOR_BONUS', use:false })));
+
+  } else if (G.phase === 'BUY') {
+    const bought = G.didBuyThisTurn;
+    const canAfford = clientCanAffordAnything(myGamePlayer(), myCoins);
+
+    if (bought) {
+      msg.innerHTML = `<strong>Buy phase</strong> (🪙${myCoins}) <span style="color:var(--green)">✓ Purchased!</span> — end your turn or invest.`;
+      if (myGamePlayer()?.hand?.['TECH_STARTUP']) {
+        btns.appendChild(mkBtn('💻 Invest (Tech Startup)', 'sec', () => showTechModal()));
+      }
+      btns.appendChild(mkBtn('✅ End Turn', '', () => send({ type:'END_TURN' })));
+    } else if (!canAfford) {
+      msg.innerHTML = `<strong>Buy phase</strong> (🪙${myCoins}) — <span style="color:#e05555">You can't afford anything.</span> Turn ends automatically.`;
+      btns.appendChild(mkBtn('End Turn', 'sec', () => send({ type:'END_TURN' })));
+    } else {
+      msg.innerHTML = `<strong>Buy phase</strong> (🪙${myCoins}) — <span style="color:#f5c518">You must buy something.</span> Click a card or landmark above.`;
+      if (myGamePlayer()?.hand?.['TECH_STARTUP']) {
+        btns.appendChild(mkBtn('💻 Invest (Tech Startup)', 'sec', () => showTechModal()));
+      }
+      // No end-turn button — player MUST buy
+    }
+
+  } else if (G.phase === 'TV_TARGET') {
+    msg.innerHTML = `<strong>📺 TV Station</strong> — choose a player to take 5 coins from.`;
+    for (const p of G.players) {
+      if (p.id === myId) continue;
+      btns.appendChild(mkBtn(`${esc(p.name)} (🪙${p.coins})`, '', () => send({ type:'TV_TARGET', targetId:p.id })));
+    }
+
+  } else if (G.phase === 'BC_GIVE') {
+    msg.innerHTML = `<strong>🏢 Business Center</strong> — choose one of your cards to give away.`;
+    for (const [id, qty] of Object.entries(myGamePlayer()?.hand || {})) {
+      if (!qty || !CARDS[id] || CARDS[id].type === 'MAJOR_ESTABLISHMENT') continue;
+      const card = CARDS[id];
+      btns.appendChild(mkBtn(`${card.icon} ${card.name} (×${qty})`, 'sec',
+        () => send({ type:'BC_RESOLVE', step:'give', cardId:id })));
+    }
+
+  } else if (G.phase === 'BC_TAKE') {
+    const giveId = G.pendingEffect?.type;
+    msg.innerHTML = `<strong>🏢 Business Center</strong> — choose a card to take from another player.`;
+    showBCModal();
+
+  } else if (G.phase === 'RENOVATION_TARGET') {
+    msg.innerHTML = `<strong>🔨 Renovation Co.</strong> — choose a landmark to collect from opponents.`;
+    let any = false;
+    for (const lmId of ALL_LANDMARK_IDS) {
+      const lm = LANDMARKS[lmId]; if (!lm) continue;
+      const owners = G.players.filter(p => p.id !== myId && p.landmarks?.[lmId]);
+      if (!owners.length) continue;
+      any = true;
+      btns.appendChild(mkBtn(`${lm.name} (${owners.length}×)`, '',
+        () => send({ type:'RENOVATION_TARGET', landmarkId:lmId })));
+    }
+    if (!any) {
+      msg.innerHTML += ' — no opponents have landmarks.';
+      btns.appendChild(mkBtn('Continue', 'sec', () => send({ type:'RENOVATION_TARGET', landmarkId:null })));
+    }
+
+  } else if (G.phase === 'GAME_OVER') {
+    msg.innerHTML = `🎉 <strong>${esc(G.winner?.name)}</strong> wins!`;
+  }
+}
+
+// ══ MODALS ════════════════════════════════════════════════════════════════════
+function showBCModal() {
+  const overlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-title').textContent = 'Choose a card to take';
+  const list = document.getElementById('modal-list'); list.innerHTML = '';
+
+  for (const p of G.players) {
+    if (p.id === myId) continue;
+    for (const [id, qty] of Object.entries(p.hand || {})) {
+      if (!qty || !CARDS[id] || CARDS[id].type === 'MAJOR_ESTABLISHMENT') continue;
+      const card = CARDS[id];
+      const opt = document.createElement('div'); opt.className = 'mopt';
+      opt.innerHTML = `<div class="mot">${card.icon} ${esc(card.name)} (×${qty})</div><div class="mos">from ${esc(p.name)}</div>`;
+      opt.addEventListener('click', () => {
+        overlay.classList.remove('open');
+        send({ type:'BC_RESOLVE', step:'take', targetPlayerId:p.id, cardId:id });
+      });
+      list.appendChild(opt);
+    }
+  }
+  document.getElementById('modal-cancel').onclick = () => overlay.classList.remove('open');
+  overlay.classList.add('open');
+}
+
+function showTechModal() {
+  const myCoins = myGamePlayer()?.coins || 0;
+  const existing = myGamePlayer()?.techStartupInvestment || 0;
+  const overlay = document.getElementById('modal-overlay');
+  document.getElementById('modal-title').textContent = `💻 Tech Startup — Invest (you have 🪙${myCoins})`;
+  const list = document.getElementById('modal-list'); list.innerHTML = '';
+  [1,2,3,5,10].filter(a=>a<=myCoins).forEach(amt => {
+    const opt = document.createElement('div'); opt.className = 'mopt';
+    opt.innerHTML = `<div class="mot">Invest ${amt} coin${amt>1?'s':''}</div><div class="mos">New total: ${existing+amt}</div>`;
+    opt.addEventListener('click', () => { overlay.classList.remove('open'); send({ type:'TECH_INVEST', amount:amt }); });
+    list.appendChild(opt);
+  });
+  document.getElementById('modal-cancel').onclick = () => overlay.classList.remove('open');
+  overlay.classList.add('open');
+}
+
+function showWin() {
+  document.getElementById('win-title').textContent = `${G.winner?.name} Wins! 🏆`;
+  document.getElementById('win-screen').classList.add('open');
+}
+
+function appendLog(msg) {
+  const lb = document.getElementById('log-box');
+  if (!lb) return;
+  const el = document.createElement('div'); el.className = 'le fresh'; el.textContent = msg;
+  lb.prepend(el);
+}
+
+// Mirror of engine's canAffordAnything — runs client-side to drive UI
+function clientCanAffordAnything(player, coins) {
+  if (!player || coins === undefined) return false;
+  const hasTrain = !!player.landmarks?.['TRAIN_STATION'];
+  for (const [row, bin] of [[(G.marketLow||[]), 'low'], [(G.marketHigh||[]), 'high'], [(G.marketPurple||[]), 'purple']]) {
+    for (const slot of row) {
+      const card = CARDS[slot.id];
+      if (!card) continue;
+      if (card.maxPerPlayer === 1 && (player.hand?.[slot.id]||0) >= 1) continue;
+      if (bin === 'high' && !hasTrain) continue;
+      if (coins >= card.cost) return true;
+    }
+  }
+  for (const lmId of ALL_LANDMARK_IDS) {
+    const lm = LANDMARKS[lmId];
+    if (!lm || player.landmarks?.[lmId]) continue;
+    if (coins >= lm.cost) return true;
+  }
+  return false;
+}
+
+// ══ UTILS ════════════════════════════════════════════════════════════════════
+function mkBtn(label, style, cb) {
+  const b = document.createElement('button');
+  b.className = 'btn btn-sm' + (style === 'sec' ? ' btn-sec' : '');
+  b.innerHTML = label;
+  b.addEventListener('click', cb);
+  return b;
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+<script>
+// ─── Card Types ───────────────────────────────────────────────────────────────
+const CardType = {
+  PRIMARY_INDUSTRY: 'PRIMARY_INDUSTRY',
+  SECONDARY_INDUSTRY: 'SECONDARY_INDUSTRY',
+  RESTAURANT: 'RESTAURANT',
+  MAJOR_ESTABLISHMENT: 'MAJOR_ESTABLISHMENT',
+};
+
+const EffectType = {
+  GET_COINS: 'GET_COINS',
+  GET_COINS_PER_CARD: 'GET_COINS_PER_CARD',
+  TAKE_COINS: 'TAKE_COINS',
+  TAKE_ALL_COINS: 'TAKE_ALL_COINS',
+  STEAL_COINS: 'STEAL_COINS',
+  SWAP_ESTABLISHMENT: 'SWAP_ESTABLISHMENT',
+  GET_COINS_PER_LANDMARK: 'GET_COINS_PER_LANDMARK',
+  GET_COINS_IF_HARBOR: 'GET_COINS_IF_HARBOR',
+  TAKE_COINS_PER_CARD: 'TAKE_COINS_PER_CARD',
+  REDISTRIBUTE: 'REDISTRIBUTE',
+  GET_COINS_PER_TYPE: 'GET_COINS_PER_TYPE',
+};
+
+const Expansion = { BASE: 'BASE', HARBOR: 'HARBOR', MILLIONAIRES_ROW: 'MILLIONAIRES_ROW' };
+
+// ─── Landmarks (Orange) ───────────────────────────────────────────────────────
+const LANDMARKS = {
+  TRAIN_STATION:   { id: 'TRAIN_STATION',   name: 'Train Station',   cost: 4,  expansion: Expansion.BASE,   description: 'You may roll 1 or 2 dice.',                              ability: 'ROLL_TWO_DICE' },
+  SHOPPING_MALL:   { id: 'SHOPPING_MALL',   name: 'Shopping Mall',   cost: 10, expansion: Expansion.BASE,   description: 'Each of your ☕ and 🍞 establishments earn +1 coin.',      ability: 'SHOPPING_MALL_BONUS' },
+  AMUSEMENT_PARK:  { id: 'AMUSEMENT_PARK',  name: 'Amusement Park',  cost: 16, expansion: Expansion.BASE,   description: 'If you roll doubles, take another turn.',                 ability: 'EXTRA_TURN_ON_DOUBLES' },
+  RADIO_TOWER:     { id: 'RADIO_TOWER',     name: 'Radio Tower',     cost: 22, expansion: Expansion.BASE,   description: 'Once per turn, you may reroll your dice.',                ability: 'REROLL_ONCE' },
+  CITY_HALL:       { id: 'CITY_HALL',       name: 'City Hall',       cost: 5,  expansion: Expansion.HARBOR, description: 'Before buying, if you have 0 coins, bank gives you 1.',   ability: 'CITY_HALL' },
+  HARBOR:          { id: 'HARBOR',          name: 'Harbor',          cost: 2,  expansion: Expansion.HARBOR, description: 'If dice sum is 10+, you may add 2 to your roll.',         ability: 'HARBOR_BONUS' },
+  AIRPORT:         { id: 'AIRPORT',         name: 'Airport',         cost: 30, expansion: Expansion.HARBOR, description: 'If you buy nothing on your turn, bank gives you 10 coins.', ability: 'AIRPORT_BONUS' },
+};
+
+const ALL_LANDMARK_IDS = ['TRAIN_STATION', 'SHOPPING_MALL', 'AMUSEMENT_PARK', 'RADIO_TOWER', 'CITY_HALL', 'HARBOR', 'AIRPORT'];
+
+// ─── Establishments ───────────────────────────────────────────────────────────
+const CARDS = {
+
+  // ══ PRIMARY INDUSTRY (Blue) ═══════════════════════════════════════════════
+  WHEAT_FIELD: {
+    id: 'WHEAT_FIELD', name: 'Wheat Field', type: CardType.PRIMARY_INDUSTRY, icon: '🌾',
+    activation: [1], cost: 1, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, anyone\'s turn.',
+  },
+  RANCH: {
+    id: 'RANCH', name: 'Ranch', type: CardType.PRIMARY_INDUSTRY, icon: '🐄',
+    activation: [2], cost: 1, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, anyone\'s turn.',
+  },
+  FOREST: {
+    id: 'FOREST', name: 'Forest', type: CardType.PRIMARY_INDUSTRY, icon: '🌲',
+    activation: [5], cost: 3, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, anyone\'s turn.',
+  },
+  MINE: {
+    id: 'MINE', name: 'Mine', type: CardType.PRIMARY_INDUSTRY, icon: '⛏️',
+    activation: [9], cost: 6, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 5 },
+    description: 'Get 5 coins from the bank, anyone\'s turn.',
+  },
+  APPLE_ORCHARD: {
+    id: 'APPLE_ORCHARD', name: 'Apple Orchard', type: CardType.PRIMARY_INDUSTRY, icon: '🍎',
+    activation: [10], cost: 3, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 3 },
+    description: 'Get 3 coins from the bank, anyone\'s turn.',
+  },
+  // Harbor Expansion — Blue
+  FLOWER_GARDEN: {
+    id: 'FLOWER_GARDEN', name: 'Flower Garden', type: CardType.PRIMARY_INDUSTRY, icon: '💐',
+    activation: [4], cost: 2, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, anyone\'s turn.',
+  },
+  MACKEREL_BOAT: {
+    id: 'MACKEREL_BOAT', name: 'Mackerel Boat', type: CardType.PRIMARY_INDUSTRY, icon: '🎣',
+    activation: [8], cost: 2, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    requiresLandmark: 'HARBOR',
+    effect: { type: EffectType.GET_COINS_IF_HARBOR, amount: 3 },
+    description: 'If you have the Harbor, get 3 coins from the bank, anyone\'s turn.',
+  },
+  TUNA_BOAT: {
+    id: 'TUNA_BOAT', name: 'Tuna Boat', type: CardType.PRIMARY_INDUSTRY, icon: '🐟',
+    activation: [12, 13, 14], cost: 5, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    requiresLandmark: 'HARBOR',
+    effect: { type: EffectType.GET_COINS_IF_HARBOR, amount: 'DICE_SUM' },
+    description: 'If you have the Harbor, receive coins equal to the dice total, anyone\'s turn.',
+  },
+  // Millionaire's Row — Blue
+  CORN_FIELD: {
+    id: 'CORN_FIELD', name: 'Corn Field', type: CardType.PRIMARY_INDUSTRY, icon: '🌽',
+    activation: [3, 4], cost: 2, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, anyone\'s turn.',
+  },
+  VINEYARD: {
+    id: 'VINEYARD', name: 'Vineyard', type: CardType.PRIMARY_INDUSTRY, icon: '🍇',
+    activation: [7], cost: 3, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 3 },
+    description: 'Get 3 coins from the bank, anyone\'s turn.',
+  },
+
+  // ══ SECONDARY INDUSTRY (Green) ════════════════════════════════════════════
+  BAKERY: {
+    id: 'BAKERY', name: 'Bakery', type: CardType.SECONDARY_INDUSTRY, icon: '🍞',
+    activation: [2, 3], cost: 1, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 1 },
+    description: 'Get 1 coin from the bank, your turn only.',
+    shoppingMallBonus: true,
+  },
+  CONVENIENCE_STORE: {
+    id: 'CONVENIENCE_STORE', name: 'Convenience Store', type: CardType.SECONDARY_INDUSTRY, icon: '🏪',
+    activation: [4], cost: 2, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 3 },
+    description: 'Get 3 coins from the bank, your turn only.',
+    shoppingMallBonus: true,
+  },
+  CHEESE_FACTORY: {
+    id: 'CHEESE_FACTORY', name: 'Cheese Factory', type: CardType.SECONDARY_INDUSTRY, icon: '🧀',
+    activation: [7], cost: 5, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 3, cardIds: ['RANCH'] },
+    description: 'Get 3 coins per Ranch you own, your turn only.',
+  },
+  FURNITURE_FACTORY: {
+    id: 'FURNITURE_FACTORY', name: 'Furniture Factory', type: CardType.SECONDARY_INDUSTRY, icon: '🪑',
+    activation: [8], cost: 3, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 3, cardIds: ['FOREST', 'MINE'] },
+    description: 'Get 3 coins per Forest or Mine you own, your turn only.',
+  },
+  FARMERS_MARKET: {
+    id: 'FARMERS_MARKET', name: "Fruit & Veg Market", type: CardType.SECONDARY_INDUSTRY, icon: '🥦',
+    activation: [11, 12], cost: 2, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 2, cardIds: ['WHEAT_FIELD', 'APPLE_ORCHARD', 'CORN_FIELD'] },
+    description: 'Get 2 coins per Wheat Field, Apple Orchard, or Corn Field you own, your turn only.',
+  },
+  // Harbor — Green
+  FLOWER_SHOP: {
+    id: 'FLOWER_SHOP', name: 'Flower Shop', type: CardType.SECONDARY_INDUSTRY, icon: '🌸',
+    activation: [6], cost: 1, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 1, cardIds: ['FLOWER_GARDEN'] },
+    description: 'Get 1 coin per Flower Garden you own, your turn only.',
+    shoppingMallBonus: true,
+  },
+  FOOD_WAREHOUSE: {
+    id: 'FOOD_WAREHOUSE', name: 'Food Warehouse', type: CardType.SECONDARY_INDUSTRY, icon: '🏭',
+    activation: [12, 13], cost: 2, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 2, cardType: CardType.RESTAURANT },
+    description: 'Get 2 coins per Restaurant you own, your turn only.',
+  },
+  // Millionaire's Row — Green
+  GENERAL_STORE: {
+    id: 'GENERAL_STORE', name: 'General Store', type: CardType.SECONDARY_INDUSTRY, icon: '🏬',
+    activation: [2], cost: 0, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 2 },
+    description: 'Get 2 coins from bank on your turn (if you have fewer than 2 landmarks built).',
+    condition: 'FEW_LANDMARKS',
+    shoppingMallBonus: true,
+  },
+  MOVING_COMPANY: {
+    id: 'MOVING_COMPANY', name: 'Moving Company', type: CardType.SECONDARY_INDUSTRY, icon: '🚚',
+    activation: [9, 10], cost: 2, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 2 },
+    description: 'Get 2 coins from the bank, your turn only.',
+  },
+  LOAN_OFFICE: {
+    id: 'LOAN_OFFICE', name: 'Loan Office', type: CardType.SECONDARY_INDUSTRY, icon: '🏦',
+    activation: [5, 6], cost: 0, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: -2 },
+    description: 'On your turn (5 or 6): pay 2 coins to the bank.',
+    special: 'LOAN_OFFICE',
+  },
+  WINERY: {
+    id: 'WINERY', name: 'Winery', type: CardType.SECONDARY_INDUSTRY, icon: '🍷',
+    activation: [9], cost: 3, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 1, cardIds: ['VINEYARD'] },
+    description: 'Get 1 coin per Vineyard you own, your turn only.',
+  },
+  DEMOLITION_COMPANY: {
+    id: 'DEMOLITION_COMPANY', name: 'Demolition Company', type: CardType.SECONDARY_INDUSTRY, icon: '🏗️',
+    activation: [4], cost: 2, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS, amount: 2 },
+    description: 'Get 2 coins from the bank, your turn only.',
+  },
+  SODA_BOTTLING_PLANT: {
+    id: 'SODA_BOTTLING_PLANT', name: 'Soda Bottling Plant', type: CardType.SECONDARY_INDUSTRY, icon: '🥤',
+    activation: [11], cost: 5, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.GET_COINS_PER_CARD, amount: 1, cardType: CardType.RESTAURANT },
+    description: 'Get 1 coin per Restaurant establishment any player owns, your turn only.',
+    special: 'SODA_ALL_PLAYERS',
+  },
+
+  // ══ RESTAURANTS (Red) ════════════════════════════════════════════════════
+  CAFE: {
+    id: 'CAFE', name: 'Café', type: CardType.RESTAURANT, icon: '☕',
+    activation: [3], cost: 2, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: 1 },
+    description: 'Take 1 coin from the active player.',
+    shoppingMallBonus: true,
+  },
+  FAMILY_RESTAURANT: {
+    id: 'FAMILY_RESTAURANT', name: 'Family Restaurant', type: CardType.RESTAURANT, icon: '🍽️',
+    activation: [9, 10], cost: 3, expansion: Expansion.BASE, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: 2 },
+    description: 'Take 2 coins from the active player.',
+    shoppingMallBonus: true,
+  },
+  // Harbor — Red
+  SUSHI_BAR: {
+    id: 'SUSHI_BAR', name: 'Sushi Bar', type: CardType.RESTAURANT, icon: '🍣',
+    activation: [1, 2], cost: 6, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    requiresLandmark: 'HARBOR',
+    effect: { type: EffectType.TAKE_COINS, amount: 3 },
+    description: 'If you have the Harbor, take 3 coins from the active player.',
+    shoppingMallBonus: true,
+  },
+  PIZZA_JOINT: {
+    id: 'PIZZA_JOINT', name: 'Pizza Joint', type: CardType.RESTAURANT, icon: '🍕',
+    activation: [7], cost: 1, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: 1 },
+    description: 'Take 1 coin from the active player.',
+    shoppingMallBonus: true,
+  },
+  HAMBURGER_STAND: {
+    id: 'HAMBURGER_STAND', name: 'Hamburger Stand', type: CardType.RESTAURANT, icon: '🍔',
+    activation: [8], cost: 1, expansion: Expansion.HARBOR, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: 1 },
+    description: 'Take 1 coin from the active player.',
+    shoppingMallBonus: true,
+  },
+  // Millionaire's Row — Red
+  FRENCH_RESTAURANT: {
+    id: 'FRENCH_RESTAURANT', name: 'French Restaurant', type: CardType.RESTAURANT, icon: '🥐',
+    activation: [5], cost: 3, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_COINS, amount: 2 },
+    description: 'Take 2 coins from the active player.',
+    shoppingMallBonus: true,
+  },
+  MEMBERS_ONLY_CLUB: {
+    id: 'MEMBERS_ONLY_CLUB', name: "Member's Only Club", type: CardType.RESTAURANT, icon: '🎩',
+    activation: [12, 13, 14], cost: 4, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
+    effect: { type: EffectType.TAKE_ALL_COINS, amount: 0, special: 'ALL_COINS' },
+    description: 'Take ALL coins from the active player (if they have 0 landmarks built).',
+    special: 'MEMBERS_ONLY_CLUB',
+  },
+
+  // ══ MAJOR ESTABLISHMENTS (Purple) ════════════════════════════════════════
+  STADIUM: {
+    id: 'STADIUM', name: 'Stadium', type: CardType.MAJOR_ESTABLISHMENT, icon: '🏟️',
+    activation: [6], cost: 6, expansion: Expansion.BASE, maxPerPlayer: 1,
+    effect: { type: EffectType.STEAL_COINS, amount: 2 },
+    description: 'Take 2 coins from each other player, your turn only.',
+  },
+  TV_STATION: {
+    id: 'TV_STATION', name: 'TV Station', type: CardType.MAJOR_ESTABLISHMENT, icon: '📺',
+    activation: [6], cost: 7, expansion: Expansion.BASE, maxPerPlayer: 1,
+    effect: { type: EffectType.TAKE_ALL_COINS, amount: 5 },
+    description: 'Take 5 coins from any one player, your turn only.',
+  },
+  BUSINESS_CENTER: {
+    id: 'BUSINESS_CENTER', name: 'Business Center', type: CardType.MAJOR_ESTABLISHMENT, icon: '🏢',
+    activation: [6], cost: 8, expansion: Expansion.BASE, maxPerPlayer: 1,
+    effect: { type: EffectType.SWAP_ESTABLISHMENT, amount: 0 },
+    description: 'Trade one non-major establishment with another player, your turn only.',
+  },
+  // Harbor — Purple
+  PUBLISHER: {
+    id: 'PUBLISHER', name: 'Publisher', type: CardType.MAJOR_ESTABLISHMENT, icon: '📰',
+    activation: [7], cost: 5, expansion: Expansion.HARBOR, maxPerPlayer: 1,
+    effect: { type: EffectType.TAKE_COINS_PER_CARD, cardType: [CardType.RESTAURANT, CardType.SECONDARY_INDUSTRY], amount: 1 },
+    description: 'Take 1 coin from each player per cup/bread establishment they own, your turn only.',
+  },
+  TAX_OFFICE: {
+    id: 'TAX_OFFICE', name: 'Tax Office', type: CardType.MAJOR_ESTABLISHMENT, icon: '💼',
+    activation: [8, 9], cost: 4, expansion: Expansion.HARBOR, maxPerPlayer: 1,
+    effect: { type: EffectType.TAKE_ALL_COINS, amount: 0, fraction: 0.5 },
+    description: 'If any player has 10+ coins, take half their coins (rounded down), your turn only.',
+    special: 'TAX_OFFICE',
+  },
+  // Millionaire's Row — Purple
+  PARK: {
+    id: 'PARK', name: 'Park', type: CardType.MAJOR_ESTABLISHMENT, icon: '🌳',
+    activation: [11, 12, 13], cost: 3, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: 1,
+    effect: { type: EffectType.REDISTRIBUTE, amount: 0 },
+    description: 'Redistribute all players\' coins evenly. Remainder goes to the bank.',
+    special: 'PARK',
+  },
+  RENOVATION_COMPANY: {
+    id: 'RENOVATION_COMPANY', name: 'Renovation Company', type: CardType.MAJOR_ESTABLISHMENT, icon: '🔨',
+    activation: [8], cost: 4, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: 1,
+    effect: { type: EffectType.GET_COINS_PER_LANDMARK, amount: 1 },
+    description: 'Choose a landmark. All players who have it pay you 3 coins.',
+    special: 'RENOVATION_COMPANY',
+  },
+  TECH_STARTUP: {
+    id: 'TECH_STARTUP', name: 'Tech Startup', type: CardType.MAJOR_ESTABLISHMENT, icon: '💻',
+    activation: [10], cost: 1, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: 1,
+    effect: { type: EffectType.GET_COINS, amount: 0 },
+    description: 'Invest coins. On your turn, receive invested amount from each other player.',
+    special: 'TECH_STARTUP',
+  },
+  INTERNATIONAL_EXHIBIT_HALL: {
+    id: 'INTERNATIONAL_EXHIBIT_HALL', name: 'Intl. Exhibit Hall', type: CardType.MAJOR_ESTABLISHMENT, icon: '🏛️',
+    activation: [10], cost: 7, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: 1,
+    effect: { type: EffectType.GET_COINS, amount: 0 },
+    description: 'If you have the most (or tied for most) landmarks, take all coins from the bank supply.',
+    special: 'INTERNATIONAL_EXHIBIT_HALL',
+  },
+};
+
+// ─── Supply Counts ─────────────────────────────────────────────────────────────
+const SUPPLY_COUNTS = {
+  // Base — Blue
+  WHEAT_FIELD: 6, RANCH: 6, FOREST: 6, MINE: 6, APPLE_ORCHARD: 6,
+  // Base — Green
+  BAKERY: 6, CONVENIENCE_STORE: 6, CHEESE_FACTORY: 6, FURNITURE_FACTORY: 6, FARMERS_MARKET: 6,
+  // Base — Red
+  CAFE: 6, FAMILY_RESTAURANT: 6,
+  // Base — Purple
+  STADIUM: 4, TV_STATION: 4, BUSINESS_CENTER: 4,
+  // Harbor — Blue
+  FLOWER_GARDEN: 6, MACKEREL_BOAT: 6, TUNA_BOAT: 6,
+  // Harbor — Green
+  FLOWER_SHOP: 6, FOOD_WAREHOUSE: 6,
+  // Harbor — Red
+  SUSHI_BAR: 6, PIZZA_JOINT: 6, HAMBURGER_STAND: 6,
+  // Harbor — Purple
+  PUBLISHER: 4, TAX_OFFICE: 4,
+  // Millionaire's Row — Blue
+  CORN_FIELD: 6, VINEYARD: 6,
+  // Millionaire's Row — Green
+  GENERAL_STORE: 6, MOVING_COMPANY: 6, LOAN_OFFICE: 4, WINERY: 6,
+  DEMOLITION_COMPANY: 6, SODA_BOTTLING_PLANT: 4,
+  // Millionaire's Row — Red
+  FRENCH_RESTAURANT: 6, MEMBERS_ONLY_CLUB: 4,
+  // Millionaire's Row — Purple
+  PARK: 4, RENOVATION_COMPANY: 4, TECH_STARTUP: 4, INTERNATIONAL_EXHIBIT_HALL: 4,
+};
+
+const CARD_TYPE_COLORS = {
+  [CardType.PRIMARY_INDUSTRY]:   '#2e6fa8',
+  [CardType.SECONDARY_INDUSTRY]: '#2a7a44',
+  [CardType.RESTAURANT]:         '#b83232',
+  [CardType.MAJOR_ESTABLISHMENT]:'#6b3fa0',
+};
+
+const CARD_TYPE_LABELS = {
+  [CardType.PRIMARY_INDUSTRY]:   'Primary Industry',
+  [CardType.SECONDARY_INDUSTRY]: 'Secondary Industry',
+  [CardType.RESTAURANT]:         'Restaurant',
+  [CardType.MAJOR_ESTABLISHMENT]:'Major Establishment',
+};
+</script>
+</body>
+</html>
