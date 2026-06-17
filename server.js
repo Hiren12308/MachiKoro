@@ -150,6 +150,12 @@ wss.on('connection', (ws) => {
     if (msg.type === 'TV_TARGET' && isYourTurn && G.phase === 'TV_TARGET') {
       G.resolveTVStation(msg.targetId); pushGameState(); return;
     }
+    if (msg.type === 'BC_CANCEL' && isYourTurn && G.phase === 'BC_TAKE') {
+      G.phase = 'BC_GIVE';  // go back so player can re-choose what to give
+      G.pendingEffect = {};
+      pushGameState(); return;
+    }
+
     if (msg.type === 'BC_RESOLVE' && isYourTurn) {
       if (msg.step === 'give') {
         G.pendingEffect = { ...(G.pendingEffect || {}), giveCardId: msg.cardId };
