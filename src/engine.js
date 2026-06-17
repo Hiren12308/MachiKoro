@@ -8,6 +8,11 @@ class MachiKoroGame {
       techStartupInvestment: 0,
     }));
 
+    // Give City Hall to all players at start (it's free and pre-built)
+    for (const p of this.players) {
+      p.landmarks['CITY_HALL'] = true;
+    }
+
     this._buildDeck();
     this.marketLow    = [];
     this.marketHigh   = [];
@@ -179,8 +184,9 @@ class MachiKoroGame {
       if (card.condition === 'FEW_LANDMARKS' && this.builtLandmarkCount(active) >= 2) continue;
 
       if (card.special === 'LOAN_OFFICE') {
-        const paid = this.payToBank(active, 2);
-        this.addLog(`${active.name}'s 🏦 Loan Office: paid ${paid} to bank`);
+        // Loan Office: take 2 coins from bank (it's a debt — you'll pay it back via game mechanics)
+        this.takeFromBank(active, 2);
+        this.addLog(`${active.name}'s 🏦 Loan Office: took 2 coins from bank (loan!)`);
         continue;
       }
       if (card.special === 'SODA_ALL_PLAYERS') {
