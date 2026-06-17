@@ -229,7 +229,7 @@ const CARDS = {
     activation: [8], cost: 1, expansion: Expansion.HARBOR, maxPerPlayer: null,
     effect: { type: EffectType.TAKE_COINS, amount: 1 },
     description: 'Take 1 coin from the active player.',
-    shoppingMallBonus: true,
+    shoppingMallBonus: true, // Might be get 2 coins?
   },
   // Millionaire's Row — Red
   FRENCH_RESTAURANT: {
@@ -244,7 +244,7 @@ const CARDS = {
     activation: [12, 13, 14], cost: 4, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
     effect: { type: EffectType.TAKE_ALL_COINS, amount: 0, special: 'ALL_COINS' },
     description: 'Take ALL coins from the active player (if they have 0 landmarks built).',
-    special: 'MEMBERS_ONLY_CLUB',
+    special: 'MEMBERS_ONLY_CLUB', // This wrong
   },
 
   // ══ MAJOR ESTABLISHMENTS (Purple) ════════════════════════════════════════
