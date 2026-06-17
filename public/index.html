@@ -97,8 +97,7 @@
   .htag{font-size:.57rem;color:#7ab3e0;background:rgba(46,111,168,.2);border-radius:3px;padding:1px 4px;margin-top:2px;display:inline-block}
   .stack-badge{position:absolute;top:4px;right:4px;background:var(--accent);color:#fff;border-radius:9px;font-size:.63rem;font-weight:700;padding:1px 5px;z-index:2}
   .empty-slot{background:rgba(255,255,255,.025);border:1px dashed var(--border);border-radius:9px;width:106px;min-height:128px;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:.72rem}
-  .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#080818;border:1px solid var(--border);border-radius:8px;padding:.5rem .65rem;min-width:152px;max-width:195px;z-index:99;pointer-events:none;font-size:.7rem;display:none;line-height:1.45}
-  .slot:hover .tip{display:block}
+  .tip{position:fixed;background:#080818;border:1px solid var(--border);border-radius:8px;padding:.6rem .75rem;width:200px;z-index:999;pointer-events:none;font-size:.7rem;line-height:1.5;display:none;box-shadow:0 4px 16px rgba(0,0,0,.6)}
 
   /* Right panel */
   #right-col{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;padding:.65rem;display:flex;flex-direction:column;gap:.6rem}
@@ -148,7 +147,7 @@
     <input id="name-input" type="text" placeholder="Your name (e.g. Alice)" maxlength="20" autofocus>
     <button class="btn" id="join-btn">Join Game</button>
     <div class="err" id="join-err"></div>
-    <div class="sub">wsg 😏😏😏</div>
+    <div class="sub">Make sure you're on the same WiFi as the host.</div>
   </div>
 </div>
 
@@ -526,15 +525,8 @@ function renderSlots(containerId, slots, slotType, isBuy, alreadyBought) {
         <div class="cc">🪙 ${card.cost}</div>
         <div class="cstripe ${stripeClass}"></div>
       </div>
-      <div class="tip">
-        <strong>${card.icon} ${esc(card.name)}</strong><br>
-        ${esc(card.description)}<br>
-        <span style="color:var(--dim)">Activates: ${actStr}</span><br>
-        <span style="color:var(--dim)">In stack: ${stackCount}</span>
-        ${owned > 0 ? `<br><span style="color:var(--coin)">You own: ${owned}</span>` : ''}
-        ${maxed ? '<br><span style="color:#e05555">Already owned (max 1)</span>' : ''}
-      </div>
     `;
+    wrap.dataset.tipHtml = `<strong>${card.icon} ${esc(card.name)}</strong><br>${esc(card.description)}<br><span style="color:var(--dim)">Activates: ${actStr} | Stack: ${stackCount}</span>${owned > 0 ? `<br><span style="color:var(--coin)">You own: ${owned}</span>` : ''}${maxed ? '<br><span style="color:#e05555">Max 1 per player</span>' : ''}`;
 
     if (buyable) {
       wrap.querySelector('.mkt-card').addEventListener('click', () => {
@@ -572,11 +564,13 @@ function renderRightPanel() {
     const lm = LANDMARKS[lmId]; if (!lm) continue;
     const built = p?.landmarks?.[lmId];
     const myCoins = myGamePlayer()?.coins || 0;
-    const canBuy = isBuy && !built && myCoins >= lm.cost && !G.didBuyThisTurn;
+    const isFree = lm.cost === 0;
+    const canBuy = isBuy && !built && !isFree && myCoins >= lm.cost && !G.didBuyThisTurn;
     const el = document.createElement('div');
     el.className = 'lmc' + (built ? ' built' : '') + (canBuy ? ' can-buy' : '');
     el.title = lm.description;
-    el.innerHTML = `<span>${built?'✅':'⬜'}</span><span class="lmn">${esc(lm.name)}</span><span class="lmp">${built ? '—' : '🪙'+lm.cost}</span>`;
+    const costLabel = built ? '—' : isFree ? 'FREE' : '🪙'+lm.cost;
+    el.innerHTML = `<span>${built?'✅':'⬜'}</span><span class="lmn">${esc(lm.name)}</span><span class="lmp" style="${isFree && !built ? 'color:#2ecc71' : ''}">${costLabel}</span>`;
     if (canBuy) el.addEventListener('click', () => send({ type: 'BUY_LANDMARK', landmarkId: lmId }));
     ld.appendChild(el);
   }
@@ -696,7 +690,10 @@ function showBCModal() {
       list.appendChild(opt);
     }
   }
-  document.getElementById('modal-cancel').onclick = () => overlay.classList.remove('open');
+  document.getElementById('modal-cancel').onclick = () => {
+    overlay.classList.remove('open');
+    send({ type: 'BC_CANCEL' }); // tell server to go back to BC_GIVE
+  };
   overlay.classList.add('open');
 }
 
@@ -750,6 +747,29 @@ function clientCanAffordAnything(player, coins) {
 }
 
 // ══ UTILS ════════════════════════════════════════════════════════════════════
+
+// ── Floating tooltip ────────────────────────────────────────────────────────
+const tipEl = document.createElement('div');
+tipEl.className = 'tip';
+document.body.appendChild(tipEl);
+
+document.addEventListener('mouseover', e => {
+  const slot = e.target.closest('[data-tip-html]');
+  if (slot) { tipEl.innerHTML = slot.dataset.tipHtml; tipEl.style.display = 'block'; }
+  else { tipEl.style.display = 'none'; }
+});
+document.addEventListener('mousemove', e => {
+  if (tipEl.style.display === 'none') return;
+  const x = e.clientX + 14, y = e.clientY - 10;
+  const maxX = window.innerWidth  - tipEl.offsetWidth  - 8;
+  const maxY = window.innerHeight - tipEl.offsetHeight - 8;
+  tipEl.style.left = Math.min(x, maxX) + 'px';
+  tipEl.style.top  = Math.max(8, Math.min(y, maxY)) + 'px';
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('[data-tip-html]')) tipEl.style.display = 'none';
+});
+
 function mkBtn(label, style, cb) {
   const b = document.createElement('button');
   b.className = 'btn btn-sm' + (style === 'sec' ? ' btn-sec' : '');
@@ -792,7 +812,7 @@ const LANDMARKS = {
   SHOPPING_MALL:   { id: 'SHOPPING_MALL',   name: 'Shopping Mall',   cost: 10, expansion: Expansion.BASE,   description: 'Each of your ☕ and 🍞 establishments earn +1 coin.',      ability: 'SHOPPING_MALL_BONUS' },
   AMUSEMENT_PARK:  { id: 'AMUSEMENT_PARK',  name: 'Amusement Park',  cost: 16, expansion: Expansion.BASE,   description: 'If you roll doubles, take another turn.',                 ability: 'EXTRA_TURN_ON_DOUBLES' },
   RADIO_TOWER:     { id: 'RADIO_TOWER',     name: 'Radio Tower',     cost: 22, expansion: Expansion.BASE,   description: 'Once per turn, you may reroll your dice.',                ability: 'REROLL_ONCE' },
-  CITY_HALL:       { id: 'CITY_HALL',       name: 'City Hall',       cost: 5,  expansion: Expansion.HARBOR, description: 'Before buying, if you have 0 coins, bank gives you 1.',   ability: 'CITY_HALL' },
+  CITY_HALL:       { id: 'CITY_HALL',       name: 'City Hall',       cost: 0,  expansion: Expansion.HARBOR, description: 'Before buying, if you have 0 coins, bank gives you 1.',   ability: 'CITY_HALL', startBuilt: true },
   HARBOR:          { id: 'HARBOR',          name: 'Harbor',          cost: 2,  expansion: Expansion.HARBOR, description: 'If dice sum is 10+, you may add 2 to your roll.',         ability: 'HARBOR_BONUS' },
   AIRPORT:         { id: 'AIRPORT',         name: 'Airport',         cost: 30, expansion: Expansion.HARBOR, description: 'If you buy nothing on your turn, bank gives you 10 coins.', ability: 'AIRPORT_BONUS' },
 };
