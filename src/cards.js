@@ -28,7 +28,7 @@ const LANDMARKS = {
   SHOPPING_MALL:   { id: 'SHOPPING_MALL',   name: 'Shopping Mall',   cost: 10, expansion: Expansion.BASE,   description: 'Each of your ☕ and 🍞 establishments earn +1 coin.',      ability: 'SHOPPING_MALL_BONUS' },
   AMUSEMENT_PARK:  { id: 'AMUSEMENT_PARK',  name: 'Amusement Park',  cost: 16, expansion: Expansion.BASE,   description: 'If you roll doubles, take another turn.',                 ability: 'EXTRA_TURN_ON_DOUBLES' },
   RADIO_TOWER:     { id: 'RADIO_TOWER',     name: 'Radio Tower',     cost: 22, expansion: Expansion.BASE,   description: 'Once per turn, you may reroll your dice.',                ability: 'REROLL_ONCE' },
-  CITY_HALL:       { id: 'CITY_HALL',       name: 'City Hall',       cost: 5,  expansion: Expansion.HARBOR, description: 'Before buying, if you have 0 coins, bank gives you 1.',   ability: 'CITY_HALL' },
+  CITY_HALL:       { id: 'CITY_HALL',       name: 'City Hall',       cost: 0,  expansion: Expansion.HARBOR, description: 'Before buying, if you have 0 coins, bank gives you 1.',   ability: 'CITY_HALL', startBuilt: true },
   HARBOR:          { id: 'HARBOR',          name: 'Harbor',          cost: 2,  expansion: Expansion.HARBOR, description: 'If dice sum is 10+, you may add 2 to your roll.',         ability: 'HARBOR_BONUS' },
   AIRPORT:         { id: 'AIRPORT',         name: 'Airport',         cost: 30, expansion: Expansion.HARBOR, description: 'If you buy nothing on your turn, bank gives you 10 coins.', ability: 'AIRPORT_BONUS' },
 };
@@ -229,7 +229,7 @@ const CARDS = {
     activation: [8], cost: 1, expansion: Expansion.HARBOR, maxPerPlayer: null,
     effect: { type: EffectType.TAKE_COINS, amount: 1 },
     description: 'Take 1 coin from the active player.',
-    shoppingMallBonus: true, // Might be get 2 coins?
+    shoppingMallBonus: true,
   },
   // Millionaire's Row — Red
   FRENCH_RESTAURANT: {
@@ -244,7 +244,7 @@ const CARDS = {
     activation: [12, 13, 14], cost: 4, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
     effect: { type: EffectType.TAKE_ALL_COINS, amount: 0, special: 'ALL_COINS' },
     description: 'Take ALL coins from the active player (if they have 0 landmarks built).',
-    special: 'MEMBERS_ONLY_CLUB', // This wrong
+    special: 'MEMBERS_ONLY_CLUB',
   },
 
   // ══ MAJOR ESTABLISHMENTS (Purple) ════════════════════════════════════════
