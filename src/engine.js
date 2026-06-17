@@ -4,7 +4,7 @@ class MachiKoroGame {
       id: i, name,
       coins: 0,  // players start with 0 coins
       hand: { WHEAT_FIELD: 1, BAKERY: 1 },
-      landmarks: {},
+      landmarks: {CITY_HALL},
       techStartupInvestment: 0,
     }));
 
