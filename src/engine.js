@@ -318,7 +318,7 @@ class MachiKoroGame {
         const card = CARDS[slot.id];
         if (!card) continue;
         if (card.maxPerPlayer === 1 && (p.hand[slot.id]||0) >= 1) continue;
-        if (slot === this.marketHigh && !this.hasLandmark(p,'TRAIN_STATION')) continue;
+        if (slot === this.marketHigh && this.diceValues.length < 2) continue;  // need 2 dice rolled
         if (coins >= card.cost) return true;
       }
     }
@@ -336,7 +336,7 @@ class MachiKoroGame {
     const p = this.currentPlayer, card = CARDS[cardId];
     if (!card || p.coins < card.cost) return false;
     if (card.maxPerPlayer === 1 && (p.hand[cardId]||0) >= 1) return false;
-    if (slotType === 'high' && !this.hasLandmark(p,'TRAIN_STATION')) return false;
+    if (slotType === 'high' && this.diceValues.length < 2) return false;  // must have rolled 2 dice this turn
 
     const row = slotType==='low' ? this.marketLow : slotType==='high' ? this.marketHigh : this.marketPurple;
     const slot = row.find(s => s.id === cardId);
