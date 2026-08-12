@@ -161,10 +161,12 @@ const CARDS = {
     shoppingMallBonus: true,
   },
   MOVING_COMPANY: {
-    id: 'MOVING_COMPANY', name: 'Moving Company', type: CardType.SECONDARY_INDUSTRY, icon: '🚚',
-    activation: [9, 10], cost: 2, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null,
-    effect: { type: EffectType.GET_COINS, amount: 2 },
-    description: 'Get 2 coins from the bank, your turn only.',
+  id: 'MOVING_COMPANY',
+  name: 'Moving Company',  type: CardType.SECONDARY_INDUSTRY,  icon: '🚚',  activation: [9, 10],
+  cost: 2, expansion: Expansion.MILLIONAIRES_ROW, maxPerPlayer: null, effect: { type: EffectType.GET_COINS, amount: 2 },
+  description: 'Sell one non-major establishment you own and receive its cost.',
+  special: 'MOVING_COMPANY',
+},
   },
   LOAN_OFFICE: {
     id: 'LOAN_OFFICE', name: 'Loan Office', type: CardType.SECONDARY_INDUSTRY, icon: '🏦',
