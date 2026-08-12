@@ -310,25 +310,54 @@ class MachiKoroGame {
       this.endTurn();
     }
   }
-
   canAffordAnything(p) {
-    const coins = p.coins;
-    for (const row of [this.marketLow, this.marketHigh, this.marketPurple]) {
-      for (const slot of row) {
-        const card = CARDS[slot.id];
-        if (!card) continue;
-        if (card.maxPerPlayer === 1 && (p.hand[slot.id]||0) >= 1) continue;
-        if (slot === this.marketHigh && this.diceValues.length < 2) continue;  // need 2 dice rolled
-        if (coins >= card.cost) return true;
+  if (!p) return false;
+
+  const coins = p.coins;
+  const twoDice = this.diceValues.length === 2;
+
+  for (const [row, slotType] of [
+    [this.marketLow, 'low'],
+    [this.marketHigh, 'high'],
+    [this.marketPurple, 'purple']
+  ]) {
+    for (const slot of row) {
+      const card = CARDS[slot.id];
+      if (!card) continue;
+
+      if (card.maxPerPlayer === 1 && (p.hand[slot.id] || 0) >= 1) {
+        continue;
       }
+
+      if (coins < card.cost) {
+        continue;
+      }
+
+      // High-roll cards need 2 dice.
+      if (slotType === 'high' && !twoDice) {
+        continue;
+      }
+
+      // Purple cards above 6 need 2 dice.
+      if (
+        card.type === CardType.MAJOR_ESTABLISHMENT &&
+        this.isTwoDiceRequired(card) &&
+        !twoDice
+      ) {
+        continue;
+      }
+
+      return true;
     }
-    for (const lmId of ALL_LANDMARK_IDS) {
-      const lm = LANDMARKS[lmId];
-      if (!lm || p.landmarks[lmId]) continue;
-      if (coins >= lm.cost) return true;
-    }
-    return false;
   }
+  for (const lmId of ALL_LANDMARK_IDS) {
+    const lm = LANDMARKS[lmId];
+
+    if (!lm || p.landmarks[lmId]) continue;
+    if (coins >= lm.cost) return true;
+  }
+  return false;
+}
 
   // ─── BUY ───────────────────────────────────────────────────────────────────
   buyCard(cardId, slotType) {
