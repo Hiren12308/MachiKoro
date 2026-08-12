@@ -156,6 +156,31 @@ class MachiKoroGame {
         earn *= qty;
         const took = this.transferCoins(active, owner, earn);
         this.addLog(`${owner.name}'s ${card.icon} ${card.name} ×${qty}: took ${took} from ${active.name}`);
+        if (card.special === 'MOVING_COMPANY') {
+          const removable = Object.keys(active.hand).filter(id => {
+            const c = CARDS[id];
+            return (
+              active.hand[id] > 0 &&
+              c &&
+              c.type !== CardType.MAJOR_ESTABLISHMENT
+            );
+          });
+
+        if (removable.length === 0) {
+          this.addLog(
+            `${active.name}'s 🚚 Moving Company: no establishment to sell`
+          );
+          continue;
+        }
+      
+        this.phase = 'MOVING_TARGET';
+        this.pendingEffect = {
+          card,
+          availableCards: removable
+        };
+      
+        return;
+      }
       }
     }
 
