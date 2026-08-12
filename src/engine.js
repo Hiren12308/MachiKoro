@@ -287,21 +287,55 @@ class MachiKoroGame {
       } else if (card.special === 'RENOVATION_COMPANY') {
         this.phase = 'RENOVATION_TARGET'; this.pendingEffect = { card }; return;
       } else if (card.effect.type === EffectType.TAKE_ALL_COINS && !card.special) {
-        // TV Station
-        this.phase = 'TV_TARGET'; this.pendingEffect = { card }; return;
-      } else if (card.effect.type === EffectType.SWAP_ESTABLISHMENT) {
-        this.phase = 'BC_GIVE'; this.pendingEffect = { card }; return;
-      }
-    }
+// TV Station
+const targets = this.players.filter(
+  p => p.id !== active.id && p.coins > 0
+);
+
+if (targets.length === 0) {
+  this.addLog(
+    `${active.name}'s 📺 TV Station: no opponent has coins`
+  );
+
+  this.pendingEffect = null;
+  this._checkCityHall();
+  return;
+}
+
+this.phase = 'TV_TARGET';
+this.pendingEffect = { card };
+return;
+
+} else if (card.effect.type === EffectType.SWAP_ESTABLISHMENT) {
+  this.phase = 'BC_GIVE';
+  this.pendingEffect = { card };
+  return;
+}
 
     this._checkCityHall();
   }
 
   resolveTVStation(targetPlayerId) {
-    const active = this.currentPlayer, target = this.players[targetPlayerId];
+    const active = this.currentPlayer;
+  
+    const target = this.players.find(
+      p => p.id === targetPlayerId
+    );
+  
+    if (!target || target.id === active.id) {
+      return false;
+    }
+  
     const took = this.transferCoins(target, active, 5);
-    this.addLog(`${active.name}'s 📺 TV Station: took ${took} from ${target.name}`);
+  
+    this.addLog(
+      `${active.name}'s 📺 TV Station: took ${took} from ${target.name}`
+    );
+  
+    this.pendingEffect = null;
     this._checkCityHall();
+  
+    return true;
   }
 
   resolveRenovationCompany(landmarkId) {
@@ -323,6 +357,31 @@ class MachiKoroGame {
     this.addLog(`${active.name}'s 🏢 BC: gave ${CARDS[giveCardId]?.name}, got ${CARDS[takeCardId]?.name} from ${other.name}`);
     this._checkCityHall();
   }
+  resolveMovingCompany(cardId) {
+  const active = this.currentPlayer;
+  const card = CARDS[cardId];
+
+  if (!card) return false;
+  if (!active.hand[cardId]) return false;
+  if (card.type === CardType.MAJOR_ESTABLISHMENT) return false;
+
+  active.hand[cardId]--;
+
+  if (active.hand[cardId] <= 0) {
+    delete active.hand[cardId];
+  }
+
+  this.takeFromBank(active, card.cost);
+
+  this.addLog(
+    `${active.name}'s 🚚 Moving Company: sold ${card.name} for ${card.cost} coin(s)`
+  );
+
+  this.pendingEffect = null;
+  this._checkCityHall();
+
+  return true;
+}
 
   _checkCityHall() {
     const p = this.currentPlayer;
