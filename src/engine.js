@@ -361,30 +361,61 @@ class MachiKoroGame {
 
   // ─── BUY ───────────────────────────────────────────────────────────────────
   buyCard(cardId, slotType) {
-    if (this.didBuyThisTurn) return false;
-    const p = this.currentPlayer, card = CARDS[cardId];
-    if (!card || p.coins < card.cost) return false;
-    if (card.maxPerPlayer === 1 && (p.hand[cardId]||0) >= 1) return false;
-    if (slotType === 'high' && this.diceValues.length < 2) return false;  // must have rolled 2 dice this turn
+  if (this.didBuyThisTurn) return false;
 
-    const row = slotType==='low' ? this.marketLow : slotType==='high' ? this.marketHigh : this.marketPurple;
-    const slot = row.find(s => s.id === cardId);
-    if (!slot) return false;
+  const p = this.currentPlayer;
+  const card = CARDS[cardId];
 
-    slot.count--;
-    if (slot.count <= 0) {
-      row.splice(row.indexOf(slot), 1);
-      this._fillRow(row, slotType, slotType==='purple' ? 4 : 5);
-    }
-
-    p.coins -= card.cost;
-    p.hand[cardId] = (p.hand[cardId]||0) + 1;
-    this.didBuyThisTurn = true;
-    this.addLog(`${p.name} bought ${card.icon} ${card.name} for ${card.cost} coin(s)`);
-    this.checkWin();
-    return true;
+  if (!this.canBuyCard(card, slotType)) {
+    return false;
   }
 
+  const row =
+    slotType === 'low'
+      ? this.marketLow
+      : slotType === 'high'
+        ? this.marketHigh
+        : this.marketPurple;
+
+  const slot = row.find(s => s.id === cardId);
+
+  if (!slot) return false;
+
+  slot.count--;
+
+  if (slot.count <= 0) {
+    row.splice(row.indexOf(slot), 1);
+    this._fillRow(
+      row,
+      slotType,
+      slotType === 'purple' ? 4 : 5
+    );
+  }
+
+  p.coins -= card.cost;
+  p.hand[cardId] = (p.hand[cardId] || 0) + 1;
+
+  this.didBuyThisTurn = true;
+
+  this.addLog(
+    `${p.name} bought ${card.icon} ${card.name} for ${card.cost} coin(s)`
+  );
+
+  // Loan Office gives the initial 5-coin loan when purchased.
+  if (card.special === 'LOAN_OFFICE') {
+  const paid = this.payToBank(active, 2);
+
+  this.addLog(
+    `${active.name}'s 🏦 Loan Office: paid ${paid} coins to the bank`
+  );
+
+  continue;
+}
+
+  this.checkWin();
+
+  return true;
+}
   buyLandmark(landmarkId) {
     if (this.didBuyThisTurn) return false;
     const p = this.currentPlayer, lm = LANDMARKS[landmarkId];
