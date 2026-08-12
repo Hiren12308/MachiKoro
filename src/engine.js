@@ -156,31 +156,6 @@ class MachiKoroGame {
         earn *= qty;
         const took = this.transferCoins(active, owner, earn);
         this.addLog(`${owner.name}'s ${card.icon} ${card.name} ×${qty}: took ${took} from ${active.name}`);
-        if (card.special === 'MOVING_COMPANY') {
-          const removable = Object.keys(active.hand).filter(id => {
-            const c = CARDS[id];
-            return (
-              active.hand[id] > 0 &&
-              c &&
-              c.type !== CardType.MAJOR_ESTABLISHMENT
-            );
-          });
-
-        if (removable.length === 0) {
-          this.addLog(
-            `${active.name}'s 🚚 Moving Company: no establishment to sell`
-          );
-          continue;
-        }
-      
-        this.phase = 'MOVING_TARGET';
-        this.pendingEffect = {
-          card,
-          availableCards: removable
-        };
-      
-        return;
-      }
       }
     }
 
@@ -209,6 +184,8 @@ class MachiKoroGame {
       if (card.condition === 'FEW_LANDMARKS' && this.builtLandmarkCount(active) >= 2) continue;
 
       if (card.special === 'LOAN_OFFICE') {
+        const paid = this.payToBank(active, 2);
+        this.addLog(`${active.name}'s 🏦 Loan Office: paid ${paid} to bank`);
         // Loan Office: take 2 coins from bank (it's a debt — you'll pay it back via game mechanics)
         this.takeFromBank(active, 2);
         this.addLog(`${active.name}'s 🏦 Loan Office: took 2 coins from bank (loan!)`);
@@ -287,55 +264,21 @@ class MachiKoroGame {
       } else if (card.special === 'RENOVATION_COMPANY') {
         this.phase = 'RENOVATION_TARGET'; this.pendingEffect = { card }; return;
       } else if (card.effect.type === EffectType.TAKE_ALL_COINS && !card.special) {
-// TV Station
-const targets = this.players.filter(
-  p => p.id !== active.id && p.coins > 0
-);
-
-if (targets.length === 0) {
-  this.addLog(
-    `${active.name}'s 📺 TV Station: no opponent has coins`
-  );
-
-  this.pendingEffect = null;
-  this._checkCityHall();
-  return;
-}
-
-this.phase = 'TV_TARGET';
-this.pendingEffect = { card };
-return;
-
-} else if (card.effect.type === EffectType.SWAP_ESTABLISHMENT) {
-  this.phase = 'BC_GIVE';
-  this.pendingEffect = { card };
-  return;
-}
+        // TV Station
+        this.phase = 'TV_TARGET'; this.pendingEffect = { card }; return;
+      } else if (card.effect.type === EffectType.SWAP_ESTABLISHMENT) {
+        this.phase = 'BC_GIVE'; this.pendingEffect = { card }; return;
+      }
+    }
 
     this._checkCityHall();
   }
 
   resolveTVStation(targetPlayerId) {
-    const active = this.currentPlayer;
-  
-    const target = this.players.find(
-      p => p.id === targetPlayerId
-    );
-  
-    if (!target || target.id === active.id) {
-      return false;
-    }
-  
+    const active = this.currentPlayer, target = this.players[targetPlayerId];
     const took = this.transferCoins(target, active, 5);
-  
-    this.addLog(
-      `${active.name}'s 📺 TV Station: took ${took} from ${target.name}`
-    );
-  
-    this.pendingEffect = null;
+    this.addLog(`${active.name}'s 📺 TV Station: took ${took} from ${target.name}`);
     this._checkCityHall();
-  
-    return true;
   }
 
   resolveRenovationCompany(landmarkId) {
@@ -357,31 +300,6 @@ return;
     this.addLog(`${active.name}'s 🏢 BC: gave ${CARDS[giveCardId]?.name}, got ${CARDS[takeCardId]?.name} from ${other.name}`);
     this._checkCityHall();
   }
-  resolveMovingCompany(cardId) {
-  const active = this.currentPlayer;
-  const card = CARDS[cardId];
-
-  if (!card) return false;
-  if (!active.hand[cardId]) return false;
-  if (card.type === CardType.MAJOR_ESTABLISHMENT) return false;
-
-  active.hand[cardId]--;
-
-  if (active.hand[cardId] <= 0) {
-    delete active.hand[cardId];
-  }
-
-  this.takeFromBank(active, card.cost);
-
-  this.addLog(
-    `${active.name}'s 🚚 Moving Company: sold ${card.name} for ${card.cost} coin(s)`
-  );
-
-  this.pendingEffect = null;
-  this._checkCityHall();
-
-  return true;
-}
 
   _checkCityHall() {
     const p = this.currentPlayer;
@@ -394,112 +312,52 @@ return;
       this.endTurn();
     }
   }
+
   canAffordAnything(p) {
-  if (!p) return false;
-
-  const coins = p.coins;
-  const twoDice = this.diceValues.length === 2;
-
-  for (const [row, slotType] of [
-    [this.marketLow, 'low'],
-    [this.marketHigh, 'high'],
-    [this.marketPurple, 'purple']
-  ]) {
-    for (const slot of row) {
-      const card = CARDS[slot.id];
-      if (!card) continue;
-
-      if (card.maxPerPlayer === 1 && (p.hand[slot.id] || 0) >= 1) {
-        continue;
+    const coins = p.coins;
+    for (const row of [this.marketLow, this.marketHigh, this.marketPurple]) {
+      for (const slot of row) {
+        const card = CARDS[slot.id];
+        if (!card) continue;
+        if (card.maxPerPlayer === 1 && (p.hand[slot.id]||0) >= 1) continue;
+        if (slot === this.marketHigh && !this.hasLandmark(p,'TRAIN_STATION')) continue;
+        if (coins >= card.cost) return true;
       }
-
-      if (coins < card.cost) {
-        continue;
-      }
-
-      // High-roll cards need 2 dice.
-      if (slotType === 'high' && !twoDice) {
-        continue;
-      }
-
-      // Purple cards above 6 need 2 dice.
-      if (
-        card.type === CardType.MAJOR_ESTABLISHMENT &&
-        this.isTwoDiceRequired(card) &&
-        !twoDice
-      ) {
-        continue;
-      }
-
-      return true;
     }
-  }
-  for (const lmId of ALL_LANDMARK_IDS) {
-    const lm = LANDMARKS[lmId];
-
-    if (!lm || p.landmarks[lmId]) continue;
-    if (coins >= lm.cost) return true;
-  }
-  return false;
-}
-
-  // ─── BUY ───────────────────────────────────────────────────────────────────
-  buyCard(cardId, slotType) {
-  if (this.didBuyThisTurn) return false;
-
-  const p = this.currentPlayer;
-  const card = CARDS[cardId];
-
-  if (!this.canBuyCard(card, slotType)) {
+    for (const lmId of ALL_LANDMARK_IDS) {
+      const lm = LANDMARKS[lmId];
+      if (!lm || p.landmarks[lmId]) continue;
+      if (coins >= lm.cost) return true;
+    }
     return false;
   }
 
-  const row =
-    slotType === 'low'
-      ? this.marketLow
-      : slotType === 'high'
-        ? this.marketHigh
-        : this.marketPurple;
+  // ─── BUY ───────────────────────────────────────────────────────────────────
+  buyCard(cardId, slotType) {
+    if (this.didBuyThisTurn) return false;
+    const p = this.currentPlayer, card = CARDS[cardId];
+    if (!card || p.coins < card.cost) return false;
+    if (card.maxPerPlayer === 1 && (p.hand[cardId]||0) >= 1) return false;
+    if (slotType === 'high' && !this.hasLandmark(p,'TRAIN_STATION')) return false;
 
-  const slot = row.find(s => s.id === cardId);
+    const row = slotType==='low' ? this.marketLow : slotType==='high' ? this.marketHigh : this.marketPurple;
+    const slot = row.find(s => s.id === cardId);
+    if (!slot) return false;
 
-  if (!slot) return false;
+    slot.count--;
+    if (slot.count <= 0) {
+      row.splice(row.indexOf(slot), 1);
+      this._fillRow(row, slotType, slotType==='purple' ? 4 : 5);
+    }
 
-  slot.count--;
-
-  if (slot.count <= 0) {
-    row.splice(row.indexOf(slot), 1);
-    this._fillRow(
-      row,
-      slotType,
-      slotType === 'purple' ? 4 : 5
-    );
+    p.coins -= card.cost;
+    p.hand[cardId] = (p.hand[cardId]||0) + 1;
+    this.didBuyThisTurn = true;
+    this.addLog(`${p.name} bought ${card.icon} ${card.name} for ${card.cost} coin(s)`);
+    this.checkWin();
+    return true;
   }
 
-  p.coins -= card.cost;
-  p.hand[cardId] = (p.hand[cardId] || 0) + 1;
-
-  this.didBuyThisTurn = true;
-
-  this.addLog(
-    `${p.name} bought ${card.icon} ${card.name} for ${card.cost} coin(s)`
-  );
-
-  // Loan Office gives the initial 5-coin loan when purchased.
-  if (card.special === 'LOAN_OFFICE') {
-  const paid = this.payToBank(active, 2);
-
-  this.addLog(
-    `${active.name}'s 🏦 Loan Office: paid ${paid} coins to the bank`
-  );
-
-  continue;
-}
-
-  this.checkWin();
-
-  return true;
-}
   buyLandmark(landmarkId) {
     if (this.didBuyThisTurn) return false;
     const p = this.currentPlayer, lm = LANDMARKS[landmarkId];
