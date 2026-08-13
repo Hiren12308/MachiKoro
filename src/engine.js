@@ -106,6 +106,46 @@ class MachiKoroGame {
   takeFromBank(p, amt) { p.coins += amt; }
   payToBank(p, amt) { const a=Math.min(p.coins,amt); p.coins-=a; return a; }
 
+  isTwoDiceRequired(card) {
+  if (!card) return false;
+
+  // Any card with an activation number above 6 requires
+  // a 2-dice roll to purchase.
+  return Math.max(...card.activation) > 6;
+}
+
+hasRolledTwoDice() {
+  return this.diceValues.length === 2;
+}
+
+canBuyCard(card, slotType) {
+  const p = this.currentPlayer;
+
+  if (!card) return false;
+  if (this.didBuyThisTurn) return false;
+  if (p.coins < card.cost) return false;
+
+  if (card.maxPerPlayer === 1 && (p.hand[card.id] || 0) >= 1) {
+    return false;
+  }
+
+  // High-row cards require 2 dice.
+  if (slotType === 'high' && !this.hasRolledTwoDice()) {
+    return false;
+  }
+
+  // Purple cards with activation > 6 also require 2 dice.
+  if (
+    card.type === CardType.MAJOR_ESTABLISHMENT &&
+    this.isTwoDiceRequired(card) &&
+    !this.hasRolledTwoDice()
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
   // ─── ROLL ──────────────────────────────────────────────────────────────────
   rollDice(numDice) {
     this.diceValues = Array.from({length:numDice}, () => Math.ceil(Math.random()*6));
